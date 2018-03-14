@@ -51,9 +51,8 @@
     <Compile Include="ExtractCommand.cs" />
     <Compile Include="Formats\NarcArchive.cs" />
     <Compile Include="Formats\NarcArchiveDirectoryEntry.cs" />
-    <Compile Include="Formats\NarcArchiveEntry.cs" />
     <Compile Include="Formats\NarcArchiveFileEntry.cs" />
-    <Compile Include="Formats\NarcArchiveFileOrDirectoryEntry.cs" />
+    <Compile Include="Formats\NarcArchiveRootDirectoryEntry.cs" />
     <Compile Include="IO\BinaryReaderExtensions.cs" />
     <Compile Include="IO\SubReadStream.cs" />
     <Compile Include="Program.cs" />

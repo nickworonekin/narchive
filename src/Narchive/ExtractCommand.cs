@@ -1,6 +1,7 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Narchive.Formats;
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace Narchive
 {
@@ -10,6 +11,7 @@ namespace Narchive
         Description = "Show help information.")]
     class ExtractCommand
     {
+        [Required]
         [Argument(0, "input", "The NARC archive to extract.")]
         public string InputPath { get; set; }
 

@@ -10,13 +10,8 @@ namespace Narchive.Formats
 {
     public class NarcArchive
     {
-        public static void Create(string inputPath, string outputPath, bool hasFilenames = true)
+        public static void Create(NarcArchiveRootDirectoryEntry rootDirectory, string outputPath, bool hasFilenames = true)
         {
-            var rootDirectory = new NarcArchiveDirectoryEntry
-            {
-                ParentDirectoryIndex = -1,
-                NameEntryOffset = 0,
-            };
             var directories = new List<NarcArchiveDirectoryEntry>
             {
                 rootDirectory,
@@ -26,47 +21,32 @@ namespace Narchive.Formats
             var directoryIndex = 1; // Root is 0
             var fileIndex = 0;
             var position = 0;
-            for (var i = 0; i < directories.Count; i++)
+            for (var i = 0; i < directories.Count; i++) // We will be modifying directories during the loop, so we can't use a foreach loop here.
             {
-                var directory = directories[i];
+                var currentDirectory = directories[i];
 
-                var directoryNames = Directory.EnumerateDirectories(Path.Combine(inputPath, directory.FullName));
-                foreach (var directoryName in directoryNames)
+                foreach (var directory in currentDirectory.Directories)
                 {
-                    var directoryEntry = new NarcArchiveDirectoryEntry
-                    {
-                        Index = directoryIndex,
-                        ParentDirectoryIndex = i,
-                        DirectoryName = directory.FullName,
-                        Name = Path.GetFileName(directoryName), // Technically returns just the part of the directory name we need
-                        FirstFileIndex = fileIndex,
-                    };
+                    directory.Index = directoryIndex;
+                    directory.FirstFileIndex = fileIndex;
 
-                    directories.Add(directoryEntry);
-                    directory.Entries.Add(directoryEntry);
+                    directories.Add(directory);
 
                     directoryIndex++;
                 }
 
-                var fileNames = Directory.EnumerateFiles(Path.Combine(inputPath, directory.FullName));
-                foreach (var fileName in fileNames)
+                foreach (var file in currentDirectory.Files)
                 {
-                    var fileInfo = new FileInfo(fileName);
+                    var fileInfo = new FileInfo(file.Path);
                     var length = (int)fileInfo.Length;
 
-                    var fileEntry = new NarcArchiveFileEntry
-                    {
-                        DirectoryIndex = i,
-                        DirectoryName = directory.FullName,
-                        Name = Path.GetFileName(fileName),
-                        Offset = position,
-                        Length = length,
-                    };
+                    file.Index = fileIndex;
+                    file.Offset = position;
+                    file.Length = length;
 
                     position += ((length + 3) / 4) * 4; // Offsets must be a multiple of 4
 
-                    files.Add(fileEntry);
-                    directory.Entries.Add(fileEntry);
+                    files.Add(file);
 
                     fileIndex++;
                 }
@@ -128,7 +108,7 @@ namespace Narchive.Formats
                         {
                             writer.Write(0); // This will be written to later
                             writer.Write((short)directories[i].FirstFileIndex); // Index of the first file in this directory
-                            writer.Write((short)(directories[i].ParentDirectoryIndex | 0xF000)); // Parent directory
+                            writer.Write((short)(directories[i].Parent.Index | 0xF000)); // Parent directory
                         }
 
                         position = directories.Count * 8;
@@ -136,25 +116,25 @@ namespace Narchive.Formats
                         {
                             directory.NameEntryOffset = position;
 
-                            foreach (var entry in directory.Entries)
+                            foreach (var entry in directory.Directories)
                             {
                                 var nameAsBytes = Encoding.UTF8.GetBytes(entry.Name);
 
-                                if (entry is NarcArchiveDirectoryEntry)
-                                {
-                                    writer.Write((byte)(nameAsBytes.Length | 0x80)); // Length of the directory name
-                                    writer.Write(nameAsBytes);
-                                    writer.Write((short)((entry as NarcArchiveDirectoryEntry).Index | 0xF000));
+                                writer.Write((byte)(nameAsBytes.Length | 0x80)); // Length of the directory name
+                                writer.Write(nameAsBytes);
+                                writer.Write((short)(entry.Index | 0xF000));
 
-                                    position += nameAsBytes.Length + 3;
-                                }
-                                else
-                                {
-                                    writer.Write((byte)nameAsBytes.Length); // Length of the file name
-                                    writer.Write(nameAsBytes);
+                                position += nameAsBytes.Length + 3;
+                            }
 
-                                    position += nameAsBytes.Length + 1;
-                                }
+                            foreach (var entry in directory.Files)
+                            {
+                                var nameAsBytes = Encoding.UTF8.GetBytes(entry.Name);
+
+                                writer.Write((byte)nameAsBytes.Length); // Length of the file name
+                                writer.Write(nameAsBytes);
+
+                                position += nameAsBytes.Length + 1;
                             }
 
                             writer.Write((byte)0);
@@ -198,7 +178,7 @@ namespace Narchive.Formats
 
                     foreach (var file in files)
                     {
-                        using (var input = new FileStream(Path.Combine(inputPath, file.FullName), FileMode.Open, FileAccess.Read))
+                        using (var input = new FileStream(file.Path, FileMode.Open, FileAccess.Read))
                         {
                             input.CopyTo(output);
                         }
@@ -259,7 +239,6 @@ namespace Narchive.Formats
 
                 var fileEntryCount = reader.ReadInt32();
                 var fileEntries = new List<NarcArchiveFileEntry>(fileEntryCount);
-                var entries = new List<NarcArchiveEntry>(fileEntryCount);
                 for (var i = 0; i < fileEntryCount; i++)
                 {
                     var offset = reader.ReadInt32();
@@ -286,21 +265,16 @@ namespace Narchive.Formats
 
                 var rootNameEntryOffset = reader.ReadInt32();
                 var rootFirstFileIndex = reader.ReadInt16();
-                var rootDirectoryEntry = new NarcArchiveDirectoryEntry
-                {
-                    Index = 0,
-                    ParentDirectoryIndex = -1,
-                    NameEntryOffset = rootNameEntryOffset,
-                    FirstFileIndex = rootFirstFileIndex,
-                };
+                var rootDirectory = new NarcArchiveRootDirectoryEntry();
 
                 var directoryEntryCount = reader.ReadInt16(); // This includes the root directory
                 var directoryEntries = new List<NarcArchiveDirectoryEntry>(directoryEntryCount)
                 {
-                    rootDirectoryEntry,
+                    rootDirectory,
                 };
 
-                if (rootNameEntryOffset != 4)
+                var hasFilenames = rootNameEntryOffset != 4;
+                if (hasFilenames)
                 {
                     // This NARC contains filenames and directory names, so read them
                     for (var i = 1; i < directoryEntryCount; i++)
@@ -312,13 +286,13 @@ namespace Narchive.Formats
                         directoryEntries.Add(new NarcArchiveDirectoryEntry
                         {
                             Index = i,
-                            ParentDirectoryIndex = parentDirectoryIndex,
+                            Parent = directoryEntries[parentDirectoryIndex],
                             NameEntryOffset = nameEntryTableOffset,
                             FirstFileIndex = firstFileIndex,
                         });
                     }
 
-                    var currentDirectory = rootDirectoryEntry;
+                    NarcArchiveDirectoryEntry currentDirectory = rootDirectory;
                     var directoryIndex = 0;
                     var fileIndex = 0;
                     while (directoryIndex < directoryEntryCount)
@@ -331,7 +305,6 @@ namespace Narchive.Formats
                             var entryDirectoryIndex = reader.ReadInt16() & 0xFFF;
                             var directoryEntry = directoryEntries[entryDirectoryIndex];
 
-                            directoryEntry.DirectoryName = directoryEntries[directoryEntry.ParentDirectoryIndex].FullName;
                             directoryEntry.Name = entryName;
                         }
                         else if (entryNameLength != 0)
@@ -340,11 +313,8 @@ namespace Narchive.Formats
                             var entryName = reader.ReadString(entryNameLength);
                             var fileEntry = fileEntries[fileIndex];
 
-                            fileEntry.DirectoryIndex = directoryIndex;
-                            fileEntry.DirectoryName = currentDirectory.FullName;
+                            fileEntry.Directory = directoryEntries[directoryIndex];
                             fileEntry.Name = entryName;
-
-                            entries.Add(new NarcArchiveEntry(input, fileEntry.FullName, fimgPosition + 8 + fileEntry.Offset, fileEntry.Length));
 
                             fileIndex++;
                         }
@@ -360,19 +330,6 @@ namespace Narchive.Formats
                         }
                     }
                 }
-                else
-                {
-                    // This NARC doesn't contain filenames and directory names, so just copy fileEntries over to entries
-                    var index = 0;
-                    var numOfDigits = Math.Floor(Math.Log10(fileEntryCount) + 1);
-                    foreach (var fileEntry in fileEntries)
-                    {
-                        var outputFilename = $"{Path.GetFileNameWithoutExtension(inputPath)}_{index.ToString($"D{numOfDigits}")}";
-                        entries.Add(new NarcArchiveEntry(input, outputFilename, fimgPosition + 8 + fileEntry.Offset, fileEntry.Length));
-
-                        index++;
-                    }
-                }
 
                 // Read the FIMG section
                 input.Position = fimgPosition;
@@ -384,18 +341,45 @@ namespace Narchive.Formats
                     throw new InvalidFileTypeException(string.Format(ErrorMessages.NotANarcFile, Path.GetFileName(inputPath)));
                 }
 
-                foreach (var entry in entries)
+                if (hasFilenames)
                 {
-                    var entryOutputPath = Path.Combine(outputPath, entry.FullName);
-                    var entryOutputDirectory = Path.GetDirectoryName(entryOutputPath);
-                    if (!Directory.Exists(entryOutputDirectory))
+                    foreach (var fileEntry in fileEntries)
                     {
-                        Directory.CreateDirectory(entryOutputDirectory);
-                    }
+                        var entryOutputPath = Path.Combine(outputPath, fileEntry.FullName);
+                        var entryOutputDirectory = Path.GetDirectoryName(entryOutputPath);
+                        if (!Directory.Exists(entryOutputDirectory))
+                        {
+                            Directory.CreateDirectory(entryOutputDirectory);
+                        }
 
-                    using (var output = new FileStream(entryOutputPath, FileMode.Create, FileAccess.Write))
+                        using (var output = new FileStream(entryOutputPath, FileMode.Create, FileAccess.Write))
+                        using (var entryStream = new SubReadStream(input, fimgPosition + 8 + fileEntry.Offset, fileEntry.Length))
+                        {
+                            entryStream.CopyTo(output);
+                        }
+                    }
+                }
+                else
+                {
+                    // This NARC doesn't contain filenames and directory names, so just use a file index as their filename
+                    var index = 0;
+                    var numOfDigits = Math.Floor(Math.Log10(fileEntryCount) + 1);
+                    foreach (var fileEntry in fileEntries)
                     {
-                        entry.Open().CopyTo(output);
+                        var entryName = $"{Path.GetFileNameWithoutExtension(inputPath)}_{index.ToString($"D{numOfDigits}")}";
+                        var entryOutputPath = Path.Combine(outputPath, entryName);
+                        if (!Directory.Exists(outputPath))
+                        {
+                            Directory.CreateDirectory(outputPath);
+                        }
+
+                        using (var output = new FileStream(entryOutputPath, FileMode.Create, FileAccess.Write))
+                        using (var entryStream = new SubReadStream(input, fimgPosition + 8 + fileEntry.Offset, fileEntry.Length))
+                        {
+                            entryStream.CopyTo(output);
+                        }
+
+                        index++;
                     }
                 }
             }

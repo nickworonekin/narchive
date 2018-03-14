@@ -1,6 +1,10 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Narchive.Formats;
+using Narchive.IO;
 using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.IO;
 
 namespace Narchive
 {
@@ -10,9 +14,11 @@ namespace Narchive
         Description = "Show help information.")]
     class CreateCommand
     {
+        [Required]
         [Argument(0, "output", "The output name of the NARC archive to create.")]
         public string OutputPath { get; set; }
 
+        [Required]
         [Argument(1, "input", "The folder containing the files and folders to add to the NARC archive.")]
         public string InputPath { get; set; }
 
@@ -25,7 +31,8 @@ namespace Narchive
 
             try
             {
-                NarcArchive.Create(InputPath, OutputPath, !NoFilenames);
+                var rootDirectory = NarcArchiveRootDirectoryEntry.CreateFromPath(InputPath);
+                NarcArchive.Create(rootDirectory, OutputPath, !NoFilenames);
             }
             catch (Exception e)
             {
