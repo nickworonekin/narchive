@@ -24,7 +24,7 @@ namespace Narchive.Formats
         /// <summary>
         /// Gets or sets the offset of the directory name in the name entry table.
         /// </summary>
-        internal virtual int NameEntryOffset { get; set; }
+        internal int NameEntryOffset { get; set; }
 
         /// <summary>
         /// Gets or sets the index of the first file in the directory.

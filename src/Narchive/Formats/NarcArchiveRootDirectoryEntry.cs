@@ -26,11 +26,6 @@ namespace Narchive.Formats
         public override NarcArchiveDirectoryEntry Parent => null;
 
         /// <summary>
-        /// Gets or sets the offset of the root directory name in the name entry table, which is always 0.
-        /// </summary>
-        internal override int NameEntryOffset => 0;
-
-        /// <summary>
         /// Creates a <seealso cref="NarcArchiveRootDirectoryEntry"/> from a specified path.
         /// </summary>
         /// <param name="path">The path.</param>
@@ -52,7 +47,6 @@ namespace Narchive.Formats
                 var fileSystemEntries = Directory.EnumerateFileSystemEntries(currentDirectoryEntry.Path);
                 foreach (var fileSystemEntry in fileSystemEntries)
                 {
-                    Console.WriteLine(fileSystemEntry);
                     var isDirectory = File.GetAttributes(fileSystemEntry).HasFlag(FileAttributes.Directory);
                     if (isDirectory)
                     {
