@@ -23,32 +23,34 @@ namespace Narchive.Formats
             var position = 0;
             for (var i = 0; i < directories.Count; i++) // We will be modifying directories during the loop, so we can't use a foreach loop here.
             {
-                var currentDirectory = directories[i];
+                var currentDirectoryEntry = directories[i];
 
-                foreach (var directory in currentDirectory.Directories)
+                foreach (var entry in currentDirectoryEntry.Entries)
                 {
-                    directory.Index = directoryIndex;
-                    directory.FirstFileIndex = fileIndex;
+                    if (entry is NarcArchiveDirectoryEntry directoryEntry)
+                    {
+                        directoryEntry.Index = directoryIndex;
+                        directoryEntry.FirstFileIndex = fileIndex;
 
-                    directories.Add(directory);
+                        directories.Add(directoryEntry);
 
-                    directoryIndex++;
-                }
+                        directoryIndex++;
+                    }
+                    else if (entry is NarcArchiveFileEntry fileEntry)
+                    {
+                        var fileInfo = new FileInfo(fileEntry.Path);
+                        var length = (int)fileInfo.Length;
 
-                foreach (var file in currentDirectory.Files)
-                {
-                    var fileInfo = new FileInfo(file.Path);
-                    var length = (int)fileInfo.Length;
+                        fileEntry.Index = fileIndex;
+                        fileEntry.Offset = position;
+                        fileEntry.Length = length;
 
-                    file.Index = fileIndex;
-                    file.Offset = position;
-                    file.Length = length;
+                        position += ((length + 3) / 4) * 4; // Offsets must be a multiple of 4
 
-                    position += ((length + 3) / 4) * 4; // Offsets must be a multiple of 4
+                        files.Add(fileEntry);
 
-                    files.Add(file);
-
-                    fileIndex++;
+                        fileIndex++;
+                    }
                 }
             }
             var fimgLength = position;
@@ -116,25 +118,25 @@ namespace Narchive.Formats
                         {
                             directory.NameEntryOffset = position;
 
-                            foreach (var entry in directory.Directories)
+                            foreach (var entry in directory.Entries)
                             {
                                 var nameAsBytes = Encoding.UTF8.GetBytes(entry.Name);
 
-                                writer.Write((byte)(nameAsBytes.Length | 0x80)); // Length of the directory name
-                                writer.Write(nameAsBytes);
-                                writer.Write((short)(entry.Index | 0xF000));
+                                if (entry is NarcArchiveDirectoryEntry directoryEntry)
+                                {
+                                    writer.Write((byte)(nameAsBytes.Length | 0x80)); // Length of the directory name
+                                    writer.Write(nameAsBytes);
+                                    writer.Write((short)(directoryEntry.Index | 0xF000));
 
-                                position += nameAsBytes.Length + 3;
-                            }
+                                    position += nameAsBytes.Length + 3;
+                                }
+                                else if (entry is NarcArchiveFileEntry fileEntry)
+                                {
+                                    writer.Write((byte)nameAsBytes.Length); // Length of the file name
+                                    writer.Write(nameAsBytes);
 
-                            foreach (var entry in directory.Files)
-                            {
-                                var nameAsBytes = Encoding.UTF8.GetBytes(entry.Name);
-
-                                writer.Write((byte)nameAsBytes.Length); // Length of the file name
-                                writer.Write(nameAsBytes);
-
-                                position += nameAsBytes.Length + 1;
+                                    position += nameAsBytes.Length + 1;
+                                }
                             }
 
                             writer.Write((byte)0);

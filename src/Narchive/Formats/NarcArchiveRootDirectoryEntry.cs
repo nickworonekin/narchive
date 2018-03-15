@@ -49,31 +49,34 @@ namespace Narchive.Formats
             {
                 var currentDirectoryEntry = directoryEntries.Dequeue();
 
-                var directories = Directory.EnumerateDirectories(currentDirectoryEntry.Path);
-                foreach (var directory in directories)
+                var fileSystemEntries = Directory.EnumerateFileSystemEntries(currentDirectoryEntry.Path);
+                foreach (var fileSystemEntry in fileSystemEntries)
                 {
-                    var directoryEntry = new NarcArchiveDirectoryEntry
+                    Console.WriteLine(fileSystemEntry);
+                    var isDirectory = File.GetAttributes(fileSystemEntry).HasFlag(FileAttributes.Directory);
+                    if (isDirectory)
                     {
-                        Name = new DirectoryInfo(directory).Name,
-                        Path = directory,
-                        Parent = currentDirectoryEntry,
-                    };
+                        var directoryEntry = new NarcArchiveDirectoryEntry
+                        {
+                            Name = new DirectoryInfo(fileSystemEntry).Name,
+                            Path = fileSystemEntry,
+                            Parent = currentDirectoryEntry,
+                        };
 
-                    currentDirectoryEntry.Directories.Add(directoryEntry);
-                    directoryEntries.Enqueue(directoryEntry);
-                }
-
-                var files = Directory.EnumerateFiles(currentDirectoryEntry.Path);
-                foreach (var file in files)
-                {
-                    var fileEntry = new NarcArchiveFileEntry
+                        currentDirectoryEntry.Entries.Add(directoryEntry);
+                        directoryEntries.Enqueue(directoryEntry);
+                    }
+                    else
                     {
-                        Name = new FileInfo(file).Name,
-                        Path = file,
-                        Directory = currentDirectoryEntry,
-                    };
+                        var fileEntry = new NarcArchiveFileEntry
+                        {
+                            Name = new FileInfo(fileSystemEntry).Name,
+                            Path = fileSystemEntry,
+                            Directory = currentDirectoryEntry,
+                        };
 
-                    currentDirectoryEntry.Files.Add(fileEntry);
+                        currentDirectoryEntry.Entries.Add(fileEntry);
+                    }
                 }
             }
 
