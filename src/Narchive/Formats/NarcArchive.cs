@@ -23,9 +23,7 @@ namespace Narchive.Formats
             var position = 0;
             for (var i = 0; i < directories.Count; i++) // We will be modifying directories during the loop, so we can't use a foreach loop here.
             {
-                var currentDirectoryEntry = directories[i];
-
-                foreach (var entry in currentDirectoryEntry.Entries)
+                foreach (var entry in directories[i].Entries)
                 {
                     if (entry is NarcArchiveDirectoryEntry directoryEntry)
                     {
@@ -70,7 +68,7 @@ namespace Narchive.Formats
                     writer.Write((byte)0);
                     writer.Write((byte)1);
 
-                    writer.Write(0); // This will be written to later
+                    writer.Write(0); // File length (will be written to later)
 
                     writer.Write((short)16); // Header length (always 16)
                     writer.Write((short)3); // Number of sections (always 3)
@@ -100,15 +98,15 @@ namespace Narchive.Formats
                     {
                         var fntbPosition = (int)output.Position - 4;
 
-                        writer.Write(0); // This will be written to later
+                        writer.Write(0); // Section length (will be written to later)
 
-                        writer.Write(0); // This will be written to later
-                        writer.Write((short)0); // Always 0
+                        writer.Write(0); // Name entry offset for the root directory (will be written to later)
+                        writer.Write((short)0); // First file index (always 0)
                         writer.Write((short)directories.Count); // Number of directories, including the root directory
 
                         for (var i = 1; i < directories.Count; i++)
                         {
-                            writer.Write(0); // This will be written to later
+                            writer.Write(0); // Name entry offset for this directory (will be written to later)
                             writer.Write((short)directories[i].FirstFileIndex); // Index of the first file in this directory
                             writer.Write((short)(directories[i].Parent.Index | 0xF000)); // Parent directory
                         }
@@ -167,7 +165,7 @@ namespace Narchive.Formats
                         writer.Write(16); // Section length (always 16)
                         writer.Write(4); // Always 4
                         writer.Write((short)0); // First file index (always 0)
-                        writer.Write((short)1); // Directory count (always 1)
+                        writer.Write((short)1); // Number of directories, including the root directory (always 1)
                     }
 
                     // Write out the FIMG section
@@ -262,22 +260,36 @@ namespace Narchive.Formats
                     throw new InvalidFileTypeException(string.Format(ErrorMessages.NotANarcFile, Path.GetFileName(inputPath)));
                 }
 
+                var hasFilenames = true;
                 var fntbLength = reader.ReadInt32();
                 var fimgPosition = fntbPosition + fntbLength;
 
-                var rootNameEntryOffset = reader.ReadInt32();
-                var rootFirstFileIndex = reader.ReadInt16();
-                var rootDirectory = new NarcArchiveRootDirectoryEntry();
-
-                var directoryEntryCount = reader.ReadInt16(); // This includes the root directory
-                var directoryEntries = new List<NarcArchiveDirectoryEntry>(directoryEntryCount)
+                // If the FNTB length is 16 or less, it's impossible for the entries to have filenames.
+                // This section will always be at least 16 bytes long, but technically it's only required to be at least 8 bytes long.
+                if (fntbLength <= 16)
                 {
-                    rootDirectory,
-                };
+                    hasFilenames = false;
+                }
 
-                var hasFilenames = rootNameEntryOffset != 4;
+                var rootNameEntryOffset = reader.ReadInt32();
+
+                // If the root name entry offset is 4, then the entries don't have filenames.
+                if (rootNameEntryOffset == 4)
+                {
+                    hasFilenames = false;
+                }
+
                 if (hasFilenames)
                 {
+                    var rootFirstFileIndex = reader.ReadInt16();
+                    var rootDirectory = new NarcArchiveRootDirectoryEntry();
+
+                    var directoryEntryCount = reader.ReadInt16(); // This includes the root directory
+                    var directoryEntries = new List<NarcArchiveDirectoryEntry>(directoryEntryCount)
+                    {
+                        rootDirectory,
+                    };
+
                     // This NARC contains filenames and directory names, so read them
                     for (var i = 1; i < directoryEntryCount; i++)
                     {
