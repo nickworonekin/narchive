@@ -22,7 +22,7 @@ namespace Narchive
         [Argument(1, "input", "The folder containing the files and folders to add to the NARC archive.")]
         public string InputPath { get; set; }
 
-        [Option("--nofilenames", "Specifies the entries in the NARC archive will not have filenames.", CommandOptionType.NoValue)]
+        [Option("-nf | --nofilenames", "Specifies the entries in the NARC archive will not have filenames.", CommandOptionType.NoValue)]
         public bool NoFilenames { get; set; }
 
         private void OnExecute(IConsole console)

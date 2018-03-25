@@ -18,10 +18,10 @@ namespace Narchive.Formats
             };
             var files = new List<NarcArchiveFileEntry>();
 
-            var directoryIndex = 1; // Root is 0
+            var directoryIndex = 1; // The root directory index is always 0.
             var fileIndex = 0;
             var position = 0;
-            for (var i = 0; i < directories.Count; i++) // We will be modifying directories during the loop, so we can't use a foreach loop here.
+            for (var i = 0; i < directories.Count; i++) // We'll be modifying directories during the loop, so we can't use a foreach loop here.
             {
                 foreach (var entry in directories[i].Entries)
                 {
@@ -202,7 +202,7 @@ namespace Narchive.Formats
             }
         }
 
-        public static void Extract(string inputPath, string outputPath)
+        public static void Extract(string inputPath, string outputPath, bool ignoreFilenames = false)
         {
             using (var input = new FileStream(inputPath, FileMode.Open, FileAccess.Read))
             using (var reader = new BinaryReader(input))
@@ -259,10 +259,11 @@ namespace Narchive.Formats
                 {
                     throw new InvalidFileTypeException(string.Format(ErrorMessages.NotANarcFile, Path.GetFileName(inputPath)));
                 }
-
-                var hasFilenames = true;
+                
                 var fntbLength = reader.ReadInt32();
                 var fimgPosition = fntbPosition + fntbLength;
+
+                var hasFilenames = !ignoreFilenames;
 
                 // If the FNTB length is 16 or less, it's impossible for the entries to have filenames.
                 // This section will always be at least 16 bytes long, but technically it's only required to be at least 8 bytes long.

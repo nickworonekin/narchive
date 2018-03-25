@@ -18,6 +18,9 @@ namespace Narchive
         [Option("-o | --output", "The folder to extract the NARC archive to.", CommandOptionType.SingleValue)]
         public string OutputPath { get; set; }
 
+        [Option("-nf | --nofilenames", "Ignores entry filenames and extracts using its index.", CommandOptionType.NoValue)]
+        public bool IgnoreFilenames { get; set; }
+
         private void OnExecute(IConsole console)
         {
             var reporter = new ConsoleReporter(console);
@@ -29,7 +32,7 @@ namespace Narchive
                     OutputPath = Environment.CurrentDirectory;
                 }
 
-                NarcArchive.Extract(InputPath, OutputPath);
+                NarcArchive.Extract(InputPath, OutputPath, IgnoreFilenames);
             }
             catch (Exception e)
             {
