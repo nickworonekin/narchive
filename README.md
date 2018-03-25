@@ -20,7 +20,7 @@ The folder containing the files and folders to add to the NARC archive.
 
 #### Options
 
-**--nofilenames**
+**-nf** or **--nofilenames**
 
 Specifies the entries in the NARC archive will not have filenames.
 
@@ -44,6 +44,10 @@ The name of the NARC archive to extract.
 **-o &lt;output&gt;** or **--output &lt;output&gt;**
 
 The name of the folder to extract the NARC archive to. If omitted, the files will be extracted to the current folder.
+
+**-nf** or **--nofilenames**
+
+Ignores entry filenames and extracts using its index.
 
 **-?** or **-h** or **--help**
 
