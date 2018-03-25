@@ -1,8 +1,8 @@
 @echo off
 
 if [%1] == [] goto :eof
-if not exist "%~f1" (
-	echo Could not find file '%1'.
+if not exist "%~1" (
+	echo Could not find file '%~1'.
 	goto :eof
 )
 
