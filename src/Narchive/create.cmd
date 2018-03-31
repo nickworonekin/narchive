@@ -3,7 +3,7 @@
 if [%1] == [] goto :eof
 if not exist "%~1\*" (
 	echo '%1' is not a folder.
-	goto :eof
+	goto :error
 )
 
 :enteroutput
@@ -21,3 +21,10 @@ if [%hasfilenames%] == [n] (
 ) else (
     "%~dp0Narchive.exe" create "%output%" "%~1"
 )
+
+if %errorlevel% neq 0 goto :error
+
+goto :eof
+
+:error
+pause

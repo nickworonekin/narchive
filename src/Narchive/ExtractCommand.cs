@@ -12,16 +12,18 @@ namespace Narchive
     class ExtractCommand
     {
         [Required]
+        [FileExists]
         [Argument(0, "input", "The NARC archive to extract.")]
         public string InputPath { get; set; }
 
+        [LegalFilePath]
         [Option("-o | --output", "The folder to extract the NARC archive to.", CommandOptionType.SingleValue)]
         public string OutputPath { get; set; }
 
         [Option("-nf | --nofilenames", "Ignores entry filenames and extracts using its index.", CommandOptionType.NoValue)]
         public bool IgnoreFilenames { get; set; }
 
-        private void OnExecute(IConsole console)
+        private int OnExecute(IConsole console)
         {
             var reporter = new ConsoleReporter(console);
 
@@ -33,10 +35,14 @@ namespace Narchive
                 }
 
                 NarcArchive.Extract(InputPath, OutputPath, IgnoreFilenames);
+
+                return 0;
             }
             catch (Exception e)
             {
                 reporter.Error(e.Message);
+
+                return e.HResult;
             }
         }
     }
