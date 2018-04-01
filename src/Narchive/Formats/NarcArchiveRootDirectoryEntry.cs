@@ -21,19 +21,22 @@ namespace Narchive.Formats
         public override NarcArchiveDirectoryEntry Parent => null;
 
         /// <summary>
-        /// Creates a <seealso cref="NarcArchiveRootDirectoryEntry"/> from a specified path.
+        /// Initializes an instance of <see cref="NarcArchiveRootDirectoryEntry"/>.
+        /// </summary>
+        public NarcArchiveRootDirectoryEntry()
+        {
+        }
+
+        /// <summary>
+        /// Initializes an instance of <see cref="NarcArchiveRootDirectoryEntry"/> from a specified path.
         /// </summary>
         /// <param name="path">The path.</param>
-        /// <returns>A <seealso cref="NarcArchiveRootDirectoryEntry"/>.</returns>
-        public static NarcArchiveRootDirectoryEntry CreateFromPath(string path)
+        public NarcArchiveRootDirectoryEntry(string path)
         {
-            var rootDirectory = new NarcArchiveRootDirectoryEntry
-            {
-                Path = path,
-            };
+            Path = path;
 
             var directoryEntries = new Queue<NarcArchiveDirectoryEntry>();
-            directoryEntries.Enqueue(rootDirectory);
+            directoryEntries.Enqueue(this);
 
             while (directoryEntries.Count > 0)
             {
@@ -68,8 +71,6 @@ namespace Narchive.Formats
                     }
                 }
             }
-
-            return rootDirectory;
         }
     }
 }

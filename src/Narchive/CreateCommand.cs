@@ -33,7 +33,7 @@ namespace Narchive
 
             try
             {
-                var rootDirectory = NarcArchiveRootDirectoryEntry.CreateFromPath(InputPath);
+                var rootDirectory = new NarcArchiveRootDirectoryEntry(InputPath);
                 NarcArchive.Create(rootDirectory, OutputPath, !NoFilenames);
 
                 return 0;
