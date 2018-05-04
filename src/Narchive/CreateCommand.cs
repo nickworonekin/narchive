@@ -1,10 +1,7 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Narchive.Formats;
-using Narchive.IO;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.IO;
 
 namespace Narchive
 {
