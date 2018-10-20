@@ -1,6 +1,6 @@
 # Narchive
 
-A command-line app for creating and extracting NARC archives.
+A command-line app for creating and extracting NARC archives, a format commonly used in Nintendo DS games.
 
 ## Usage
 ### Create
