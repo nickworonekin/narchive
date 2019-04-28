@@ -23,7 +23,9 @@ namespace Narchive
         [Option("-nf | --nofilenames", "Ignores entry filenames and extracts using its index.", CommandOptionType.NoValue)]
         public bool IgnoreFilenames { get; set; }
 
+#pragma warning disable IDE0051 // This method is used. Disable the message that says otherwise.
         private int OnExecute(IConsole console)
+#pragma warning restore IDE0051
         {
             var reporter = new ConsoleReporter(console);
 

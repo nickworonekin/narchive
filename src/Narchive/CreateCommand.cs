@@ -24,7 +24,9 @@ namespace Narchive
         [Option("-nf | --nofilenames", "Specifies the entries in the NARC archive will not have filenames.", CommandOptionType.NoValue)]
         public bool NoFilenames { get; set; }
 
+#pragma warning disable IDE0051 // This method is used. Disable the message that says otherwise.
         private int OnExecute(IConsole console)
+#pragma warning restore IDE0051
         {
             var reporter = new ConsoleReporter(console);
 
